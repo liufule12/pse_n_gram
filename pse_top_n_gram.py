@@ -4,6 +4,7 @@ import sys
 import os
 import pickle
 from math import pow
+import subprocess
 
 import const
 from util import frequency
@@ -76,6 +77,26 @@ class RemoteProtein(Protein):
         return [sum(profiles_n_gram) for profiles_n_gram in zip(*[profiles for profiles in self.remote_profiles])]
 
 
+def generate_profile(profile_jar_path, input_file, output_folder):
+    """Use java -jar command to generate profile.
+
+    Parameters
+    ----------
+    profile_jar_path: string
+                      the Top-n-gram.jar path.
+    input_file: string
+                the fasta protein sequence file path.
+    output_folder: string
+                   the output profiles folder path.
+    """
+    cmd = "java -jar %s produce_frequency %s %s" % (profile_jar_path, input_file, output_folder)
+    subprocess.Popen(cmd).wait()
+
+
+def generate_top_n_gram_profile():
+    pass
+
+
 def read_top_n_gram_file(filename, n):
     """Get RemoteProtein from top-n-gram file.
 
@@ -113,7 +134,7 @@ def read_top_n_gram_file(filename, n):
     return remote_proteins
 
 
-def pseknc(input_data, k, w, lamada, phyche_list, alphabet, extra_index_file=None, all_prop=False, theta_type=1):
+def pseknc(input_data, n, k, w, lamada, phyche_list, alphabet, extra_index_file=None, all_prop=False, theta_type=1):
     """This is a complete process in PseKNC.
 
     :param k: int, the value of k-tuple.
