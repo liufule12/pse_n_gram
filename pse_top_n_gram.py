@@ -1,15 +1,8 @@
 __author__ = 'Fule Liu'
 
-import sys
-import os
-import pickle
-from math import pow
-import subprocess
 
-import const
-from util import frequency
-from util import get_data
-from util import check_args, read_k
+import subprocess
+import operator
 from kmer import make_kmer_list
 
 
@@ -22,6 +15,15 @@ class Protein():
         self.seq_desc = seq_desc
         self.seq_content = seq_content
 
+    def get_seq_name(self):
+        return self.seq_name
+
+    def get_seq_desc(self):
+        return self.seq_desc
+
+    def get_seq_content(self):
+        return self.seq_content
+
     def __str__(self):
         return "%s\t%s\n%s\n" % (self.seq_name, self.seq_desc, self.seq_content)
 
@@ -32,13 +34,16 @@ class RemoteProtein(Protein):
         self.remote_acids = remote_acids
         self.remote_profiles = remote_profiles
 
-    def __str__(self):
-        print_remote_acids = "\n".join(self.remote_acids)
-        print_remote_profiles = "\n".join([str(remote_profile) for remote_profile in self.remote_profiles])
-        return "%s\t%s\n%s\n%s\n%s\n" % (self.seq_name, self.seq_desc, self.seq_content,
-                                         print_remote_acids, print_remote_profiles)
+    def set_seq_content(self, content):
+        self.seq_content = content
 
-    def top_n_gram_acids(self, n):
+    def get_remote_acids(self):
+        return self.remote_acids
+
+    def get_remote_profiles(self):
+        return self.remote_profiles
+
+    def get_top_n_gram_acids(self, n):
         """Get top-n-gram acids.
 
         Parameter
@@ -57,7 +62,7 @@ class RemoteProtein(Protein):
 
         return ["".join(acids_n_gram[:n]) for acids_n_gram in zip(*[acids for acids in self.remote_acids])]
 
-    def top_n_gram_profile1(self, n):
+    def get_top_n_gram_profile1(self, n):
         """Get the sum of top-n-gram profile.
 
         Parameter
@@ -74,7 +79,22 @@ class RemoteProtein(Protein):
             print("N is invalid, the n in top-n-gram cannot be larger than %d" % len(self.remote_profiles))
             return -1
 
-        return [sum(profiles_n_gram) for profiles_n_gram in zip(*[profiles for profiles in self.remote_profiles])]
+        return [sum(profiles_n_gram[:n]) for profiles_n_gram in zip(*[profiles for profiles in self.remote_profiles])]
+
+    def __str__(self):
+        print_remote_acids = "\n".join(self.remote_acids)
+        print_remote_profiles = "\n".join([str(remote_profile) for remote_profile in self.remote_profiles])
+        return "%s\t%s\n%s\n%s\n%s\n" % (self.seq_name, self.seq_desc, self.seq_content,
+                                         print_remote_acids, print_remote_profiles)
+
+
+class TopNRemoteProtein(Protein):
+    def __init__(self, seq_name, seq_desc, seq_content, n, seq_remote_content, top_n_acids, top_n_profiles):
+        super(TopNRemoteProtein, self).__init__(seq_name, seq_desc, seq_content)
+        self.n = n
+        self.seq_remote_content = seq_remote_content
+        self.top_n_acids = top_n_acids
+        self.top_n_profiles = top_n_profiles
 
 
 def generate_profile(profile_jar_path, input_file, output_folder):
@@ -117,8 +137,7 @@ def read_top_n_gram_file(filename, n):
 
     remote_proteins = []
     len_lines = len(lines)
-    step = 2 + 2*n
-    for i in range(0, len_lines, step):
+    for i in range(0, len_lines, 6):
         seq_name = lines[i].strip()
         seq_desc = None
         seq_content = None
@@ -134,33 +153,87 @@ def read_top_n_gram_file(filename, n):
     return remote_proteins
 
 
-def pseknc(input_data, n, k, w, lamada, phyche_list, alphabet, extra_index_file=None, all_prop=False, theta_type=1):
-    """This is a complete process in PseKNC.
+def pseknc(remote_proteins, n, w, lamada, alphabet, theta_type=1):
+    """This is a complete process in PseKNC."""
+    kmers = [make_kmer_list(k, alphabet) for k in range(1, n+1)]
+    vec = []
 
-    :param k: int, the value of k-tuple.
-    :param phyche_list: list, the input physicochemical properties list.
-    :param extra_index_file: a file path includes the user-defined phyche_index.
-    :param all_prop: bool, choose all physicochemical properties or not.
-    """
-    pass
+    for remote_protein in remote_proteins:
+        # Get the normalized occurrence frequency in the protein sequence.
+        f = []
+        thetas = []
+        for k in range(1, n+1):
+            acid_fre = {}
+            for kmer in kmers[k-1]:
+                acid_fre[kmer] = 0
+
+            remote_acids = remote_protein.get_top_n_gram_acids(k)
+            for acid in remote_acids:
+                acid_fre[acid] += 1
+            fre_sum = float(sum(acid_fre.values()))
+            sorted_acid_vals = sorted(acid_fre.items(), key=operator.itemgetter(0))
+            # print(sorted_acid_vals)
+            f.extend([e[1] / fre_sum for e in sorted_acid_vals])
+
+            if k == n:
+                thetas.extend(get_parallel_factor(k, lamada, remote_protein))
+
+        # print(thetas)
+        theta_sum = sum(thetas)
+        denominator = n + w * theta_sum
+
+        # temp_vec = [round(fre / denominator, 3) for fre in f]
+        temp_vec = [fre / denominator for fre in f]
+        for theta in thetas:
+            # temp_vec.append(round(w * theta / denominator, 3))
+            temp_vec.append(w * theta / denominator)
+
+        vec.append(temp_vec)
+
+    return vec
+
+
+def get_parallel_factor(k, lamada, remote_protein):
+    """Get the corresponding factor theta list."""
+    thetas = []
+    remote_profiles = remote_protein.get_top_n_gram_profile1(k)
+    l = len(remote_profiles)
+
+    for i in range(1, lamada + 1):
+        temp_sum = 0.0
+        for j in range(0, l - k - i + 1):
+            temp_sum += (remote_profiles[j] - remote_profiles[j+i])**2
+        thetas.append(temp_sum / (l - k - i + 1))
+
+    return thetas
 
 
 if __name__ == "__main__":
-    list_a = [[1, 2, 3, 4], [5, 6, 7, 8]]
-    # print(len(list_a))
-    # print(sum(list_a))
-    #
-    # protein = Protein(1, 2, 3)
-    # print(protein)
-    # protein2 = RemoteProtein(1, 2, 3, 4, 5)
-    # print(protein2)
-    #
-    remote_proteins = read_top_n_gram_file("Top-N2-gram.txt", 2)
-    for e in remote_proteins:
+    remote_proteins = read_top_n_gram_file("Top-N2-gram2.txt", 2)
+
+    for i, e in enumerate(remote_proteins):
+        # print(e)
+        # print(e.get_top_n_gram_acids(2))
+        # print(e.get_top_n_gram_profile1(2))
+        remote_proteins[i].set_seq_content("".join(e.get_top_n_gram_acids(2)))
+        print(remote_proteins[i].get_seq_content())
+
+    alphabet = "ACDEFGHIKLMNPQRSTVWY"
+
+    w = 0.05
+    lamada = 2
+    res = pseknc(remote_proteins, 2, w, lamada, alphabet)
+    for e in res:
         print(e)
-        print(e.top_n_gram_acids(1))
-        print(e.top_n_gram_profile1(2))
-    #
+
+    # with open('res.txt', 'w') as f:
+    #     for e in res:
+    #         print(e)
+    #         print(sum(e))
+    #         print(len(e))
+    #         f.write(str(e))
+    #         f.write('\n')
+
     # print(len(remote_proteins))
 
     # list_test = ["AAA", "BBB", "CCC"]
@@ -169,4 +242,4 @@ if __name__ == "__main__":
     # list_test = [['123', '45'], ['67', '890']]
     # print("\n".join([str(e) for e in list_test]))
 
-
+    # print(remote_proteins[0].get_seq_name())
