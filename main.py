@@ -36,6 +36,7 @@ def statistic(n, w, lamada, test_labels_file, predict_file, statistic_file):
 
     # Write the statistic.
     roc_auc = util.roc_auc(predict_score_label)
+    roc50_auc = util.roc50_auc(predict_score_label)
     tp, fp, tn, fn, tpr, fpr, precision = util.statistical(predict_score_label)
 
     with open(statistic_file, 'wb') as f:
@@ -43,6 +44,7 @@ def statistic(n, w, lamada, test_labels_file, predict_file, statistic_file):
         f.write(bytes("\t".join(["w:", str(w), '\n']), encoding="UTF-8"))
         f.write(bytes("\t".join(["lamada:", str(lamada), '\n']), encoding="UTF-8"))
         f.write(bytes("\t".join(["ROC_AUC:", str(roc_auc), '\n']), encoding="UTF-8"))
+        f.write(bytes("\t".join(["ROC50_AUC:", str(roc50_auc), '\n']), encoding="UTF-8"))
         f.write(bytes("\t".join(["TP:", str(tp), '\n']), encoding="UTF-8"))
         f.write(bytes("\t".join(["FP:", str(fp), '\n']), encoding="UTF-8"))
         f.write(bytes("\t".join(["TN:", str(tn), '\n']), encoding="UTF-8"))

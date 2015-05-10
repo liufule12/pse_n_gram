@@ -327,6 +327,35 @@ def roc_auc(sample_score_class):
     return auc
 
 
+def roc50_auc(sample_score_class):
+    """Compute the AUC of ROC50.
+
+    Parameter
+    ---------
+    sample_score_class: dict, {sample: (score, class)}
+    """
+
+    sorted_samples = sorted(sample_score_class.items(), key=operator.itemgetter(1), reverse=True)
+    tp = 0
+    fp = 0
+    auc = 0
+
+    for elem in sorted_samples[:50]:
+        if elem[1][1] == '1':
+            tp += 1
+        else:
+            fp += 1
+            auc += tp
+    if tp == 0:
+        auc = 0
+    elif fp == 0:
+        auc = 1
+    else:
+        auc /= tp * fp
+
+    return auc
+
+
 def statistical(sample_score_class):
     """Statistic the result.
 
