@@ -1,6 +1,7 @@
 __author__ = 'Fule Liu'
 
 import sys
+import operator
 
 
 """Used for process original data."""
@@ -257,7 +258,7 @@ def write_libsvm(vector_list, label_list, write_file):
 
 
 def write_gistsvm_vec(vecs, write_file):
-    with open(write_file, 'ab') as f:
+    with open(write_file, 'wb') as f:
         len_vec = len(vecs[0])
         f.write(bytes(write_file, encoding="UTF-8"))
         for i in range(len_vec):
@@ -270,7 +271,7 @@ def write_gistsvm_vec(vecs, write_file):
 
 
 def write_gistsvm_class(labels, write_file):
-    with open(write_file, 'ab') as f:
+    with open(write_file, 'wb') as f:
         f.write(bytes(write_file + "\t" + "class", encoding="UTF-8"))
         for i, label in enumerate(labels):
             f.write(bytes("\n", encoding="UTF-8"))
@@ -295,6 +296,70 @@ def write_csv(_vecs, write_file):
                                 quotechar='|', quoting=csv.QUOTE_MINIMAL)
         for vec in _vecs:
             spamwriter.writerow(vec)
+
+
+def roc_auc(sample_score_class):
+    """Compute the AUC of ROC.
+
+    Parameter
+    ---------
+    sample_score_class: dict, {sample: (score, class)}
+    """
+
+    sorted_samples = sorted(sample_score_class.items(), key=operator.itemgetter(1), reverse=True)
+    tp = 0
+    fp = 0
+    auc = 0
+
+    for elem in sorted_samples:
+        if elem[1][1] == '1':
+            tp += 1
+        else:
+            fp += 1
+            auc += tp
+    if tp == 0:
+        auc = 0
+    elif fp == 0:
+        auc = 1
+    else:
+        auc /= tp * fp
+
+    return auc
+
+
+def statistical(sample_score_class):
+    """Statistic the result.
+
+    Parameter
+    ---------
+    sample_score_class: dict, {sample: (score, class)}
+
+    return
+    ------
+    tp, fp, tn, fn, tpr, fpr and precision.
+    """
+
+    tp = 0
+    fp = 0
+    tn = 0
+    fn = 0
+    for elem in sample_score_class.values():
+        if float(elem[0]) >= 0 and elem[1] == '1':
+            tp += 1
+        elif float(elem[0]) >= 0 and elem[1] == '-1':
+            fp += 1
+        elif float(elem[0]) < 0 and elem[1] == '1':
+            fn += 1
+        elif float(elem[0]) < 0 and elem[1] == '-1':
+            tn += 1
+        else:
+            print(float(elem[0]))
+            print("Statistical function error. Invalid sample_score_class.")
+    tpr = tp / (tp + fp)
+    fpr = fp / (fp + tn)
+    precision = (tp + tn) / (tp + fp + tn + fn)
+
+    return tp, fp, tn, fn, tpr, fpr, precision
 
 
 def convert_phyche_index_to_dict(phyche_index, alphabet):
