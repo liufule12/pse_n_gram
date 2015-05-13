@@ -12,11 +12,11 @@ def data_split(top_n_gram_file, membership_file, out_fold):
     # Create family dataset fold.
     families = lines_membership[0].rstrip().split()[1:]
     for family in families:
-        foldname = out_fold + "/" + family
-        if not os.path.exists(foldname):
-            os.mkdir(foldname)
+        fold_name = "/".join([out_fold, family])
+        if not os.path.exists(fold_name):
+            os.mkdir(fold_name)
         else:
-            # print("Exist %s" % foldname)
+            # print("Exist %s" % fold_name)
             pass
 
     # Construct dataset.
@@ -28,13 +28,13 @@ def data_split(top_n_gram_file, membership_file, out_fold):
 
             # According to all_seq_fam_membersship.txt construct dataset.
             if val == "1":
-                filename = out_fold + "/" + families[index] + "/pos_train"
+                filename = "/".join([out_fold, families[index], "pos_train"])
             elif val == "2":
-                filename = out_fold + "/" + families[index] + "/neg_train"
+                filename = "/".join([out_fold, families[index], "neg_train"])
             elif val == "3":
-                filename = out_fold + "/" + families[index] + "/pos_test"
+                filename = "/".join([out_fold, families[index], "pos_test"])
             elif val == "4":
-                filename = out_fold + "/" + families[index] + "/neg_test"
+                filename = "/".join([out_fold, families[index], "neg_test"])
             elif val == "0":
                 continue
             else:
