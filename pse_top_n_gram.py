@@ -56,9 +56,10 @@ class RemoteProtein(Protein):
         top-n-gram acids: list
                           every elem represents the remote top-n-gram acid.
         """
+        if n <= 0:
+            raise ValueError("N is a integer larger than 0.")
         if n > len(self.remote_acids):
-            print("N is invalid, the n in top-n-gram cannot be larger than %d" % len(self.remote_acids))
-            return -1
+            raise ValueError("N is invalid, the n in top-n-gram cannot be larger than %d" % len(self.remote_acids))
 
         return ["".join(acids_n_gram[:n]) for acids_n_gram in zip(*[acids for acids in self.remote_acids])]
 
@@ -75,9 +76,10 @@ class RemoteProtein(Protein):
         top-n-gram-profile: list
                             every elem represents the sum of the remote top-n-gram frequency value.
         """
+        if n <= 0:
+            raise ValueError("N is a integer larger than 0.")
         if n > len(self.remote_profiles):
-            print("N is invalid, the n in top-n-gram cannot be larger than %d" % len(self.remote_profiles))
-            return -1
+            raise ValueError("N is invalid, the n in top-n-gram cannot be larger than %d" % len(self.remote_profiles))
 
         return [sum(profiles_n_gram[:n]) for profiles_n_gram in zip(*[profiles for profiles in self.remote_profiles])]
 
@@ -86,15 +88,6 @@ class RemoteProtein(Protein):
         print_remote_profiles = "\n".join([str(remote_profile) for remote_profile in self.remote_profiles])
         return "%s\t%s\n%s\n%s\n%s\n" % (self.seq_name, self.seq_desc, self.seq_content,
                                          print_remote_acids, print_remote_profiles)
-
-
-class TopNRemoteProtein(Protein):
-    def __init__(self, seq_name, seq_desc, seq_content, n, seq_remote_content, top_n_acids, top_n_profiles):
-        super(TopNRemoteProtein, self).__init__(seq_name, seq_desc, seq_content)
-        self.n = n
-        self.seq_remote_content = seq_remote_content
-        self.top_n_acids = top_n_acids
-        self.top_n_profiles = top_n_profiles
 
 
 def generate_profile(profile_jar_path, input_file, output_folder):
