@@ -88,7 +88,8 @@ def statistic_all(n, lamada, w, foldpath):
 GIST_TRAIN_SVM = "gist/gist-train-svm.exe"
 GIST_CLASSIFY = "gist/gist-classify.exe"
 
-if __name__ == "__main__":
+
+def main_pse_n_gram():
     listdir = os.listdir("data/dataset/")
 
     for cur_dir in listdir:
@@ -141,4 +142,61 @@ if __name__ == "__main__":
 
                 print("%s%s is ok.\n" % (tar_fold, n_lamada_w))
 
+
+def main_one_process():
+    listdir = os.listdir("data/dataset/")
+
+    for cur_dir in listdir:
+        n = 2
+        lamada = 4
+        w = 0.2
+
+        # File path.
+        n_lamada_w = "_".join([str(n), str(lamada), str(w)])
+        tar_fold = "data/dataset/" + cur_dir + "/"
+        pos_train = "".join([tar_fold, "pos_train"])
+        neg_train = "".join([tar_fold, "neg_train"])
+        pos_test = "".join([tar_fold, "pos_test"])
+        neg_test = "".join([tar_fold, "neg_test"])
+        tar_train = "".join([tar_fold, "train_", n_lamada_w])
+        tar_test = "".join([tar_fold, "test_", n_lamada_w])
+        tar_train_labels = "".join([tar_fold, "train_labels_", n_lamada_w])
+        tar_test_labels = "".join([tar_fold, "test_labels_", n_lamada_w])
+        tar_weights = "".join([tar_fold, "weights_", n_lamada_w])
+        tar_predict = "".join([tar_fold, "predict", n_lamada_w])
+        statistic_file = "".join([tar_fold, "statistic_", n_lamada_w])
+
+        # Generate pos_train vecs.
+        pos_train_vecs = generate_vecs(pos_train, n, w, lamada)
+        neg_train_vecs = generate_vecs(neg_train, n, w, lamada)
+        pos_test_vecs = generate_vecs(pos_test, n, w, lamada)
+        neg_test_vecs = generate_vecs(neg_test, n, w, lamada)
+        train_vecs = pos_train_vecs + neg_train_vecs
+        test_vecs = pos_test_vecs + neg_test_vecs
+        train_labels = ['1'] * len(pos_train_vecs) + ['-1'] * len(neg_train_vecs)
+        test_labels = ['1'] * len(pos_test_vecs) + ['-1'] * len(neg_test_vecs)
+
+        util.write_gistsvm_vec(train_vecs, tar_train)
+        util.write_gistsvm_vec(test_vecs, tar_test)
+        util.write_gistsvm_class(train_labels, tar_train_labels)
+        util.write_gistsvm_class(test_labels, tar_test_labels)
+
+        # Train and predict.
+        cmd = os.path.normcase("".join([GIST_TRAIN_SVM, " -train ", tar_train, " -class ", tar_train_labels,
+                                        " > ", tar_weights]))
+        subprocess.Popen(cmd, shell=True).wait()
+        cmd = os.path.normcase("".join([GIST_CLASSIFY, " -train ", tar_train, " -learned ", tar_weights,
+                                        " -test ", tar_test, " > ", tar_predict]))
+        subprocess.Popen(cmd, shell=True).wait()
+
+        # Statistic.
+        write_statistic(n, w, lamada, tar_test_labels, tar_predict, statistic_file)
+
+        print("%s%s is ok.\n" % (tar_fold, n_lamada_w))
+
+
+if __name__ == "__main__":
+    print("Start!")
+
+    main_one_process()
     print("End!")
