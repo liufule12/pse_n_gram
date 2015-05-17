@@ -194,30 +194,51 @@ def get_parallel_factor(k, lamada, remote_protein):
 
     for i in range(1, lamada + 1):
         temp_sum = 0.0
-        for j in range(0, l - k - i + 1):
+        for j in range(l - k - i + 1):
             temp_sum += (remote_profiles[j] - remote_profiles[j+i])**2
         thetas.append(temp_sum / (l - k - i + 1))
 
     return thetas
 
 
-if __name__ == "__main__":
-    remote_proteins = read_top_n_gram_file("Top-N2-gram2.txt", 2)
-
+def main_test():
+    n = 2
+    # remote_proteins is ok.
+    remote_proteins = read_top_n_gram_file("Top-N2-gram2.txt", n)
     for i, e in enumerate(remote_proteins):
         # print(e)
-        # print(e.get_top_n_gram_acids(2))
-        # print(e.get_top_n_gram_profile1(2))
-        remote_proteins[i].set_seq_content("".join(e.get_top_n_gram_acids(2)))
-        print(remote_proteins[i].get_seq_content())
+        # print(e.get_top_n_gram_acids(n))
+        remote_proteins[i].set_seq_content("".join(e.get_top_n_gram_acids(n)))
+        # print(remote_proteins[i].get_seq_content())
 
     alphabet = "ACDEFGHIKLMNPQRSTVWY"
-
     w = 0.05
     lamada = 2
-    res = pseknc(remote_proteins, 2, w, lamada, alphabet)
+    res = pseknc(remote_proteins, n, w, lamada, alphabet)
     for e in res:
+        # print("------")
         print(e)
+        # print(sum(e))
+
+
+if __name__ == "__main__":
+    main_test()
+    # remote_proteins = read_top_n_gram_file("Top-N2-gram2.txt", 2)
+    #
+    # for i, e in enumerate(remote_proteins):
+    #     # print(e)
+    #     # print(e.get_top_n_gram_acids(2))
+    #     # print(e.get_top_n_gram_profile1(2))
+    #     remote_proteins[i].set_seq_content("".join(e.get_top_n_gram_acids(2)))
+    #     print(remote_proteins[i].get_seq_content())
+    #
+    # alphabet = "ACDEFGHIKLMNPQRSTVWY"
+    #
+    # w = 0.05
+    # lamada = 2
+    # res = pseknc(remote_proteins, 2, w, lamada, alphabet)
+    # for e in res:
+    #     print(e)
 
     # with open('res.txt', 'w') as f:
     #     for e in res:
